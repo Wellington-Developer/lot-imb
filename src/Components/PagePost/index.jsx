@@ -13,13 +13,15 @@ export const PostPage = () => {
   const [modalPrice, setModalPrice] = useState(false);
   const { id } = useParams();
   const [openedGalery, setOpenedGalery] = useState(false);
-  const [data, setData] = useState([]);
+  const [data, setData] = useState({});
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   const { isLoaded } = useJsApiLoader({
     id: "google-map-script",
     googleMapsApiKey: "AIzaSyDZfZuGX7IFFKJ2nfiOI-0sI9B0I5jHvHM",
   });
   const { login } = useContext(UserContext);
+  const [cep, setCep] = useState("");
+  const [location, setLocation] = useState({ lat: 0, lng: 0 });
 
   const fetchData = async () => {
     try {
@@ -37,38 +39,64 @@ export const PostPage = () => {
     }
   };
 
-  const [location, setLocation] = useState({
-    lat: 0,
-    lng: 0,
-  });
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   useEffect(() => {
     if (
       isLoaded &&
-      !googleMapsLoaded &&
       data.localidade &&
       data.cidade &&
-      data.bairro
+      data.bairro &&
+      !googleMapsLoaded
     ) {
       setGoogleMapsLoaded(true);
       const geocoder = new window.google.maps.Geocoder();
       const address = `${data.localidade}, ${data.cidade}, ${data.bairro}`;
       geocoder.geocode({ address }, (results, status) => {
         if (status === "OK" && results.length > 0) {
-          setLocation({
+          const location = {
             lat: results[0].geometry.location.lat(),
             lng: results[0].geometry.location.lng(),
-          });
+          };
+
+          setLocation(location);
+
+          const { lat, lng } = location;
+          const cepUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyDZfZuGX7IFFKJ2nfiOI-0sI9B0I5jHvHM`;
+
+          fetch(cepUrl)
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("Erro ao buscar CEP");
+              }
+              return response.json();
+            })
+            .then((data) => {
+              if (data.results && data.results.length > 0) {
+                const addressComponents = data.results[0].address_components;
+                const cepComponent = addressComponents.find((component) =>
+                  component.types.includes("postal_code")
+                );
+                if (cepComponent) {
+                  setCep(cepComponent.short_name);
+                } else {
+                  setCep("CEP não encontrado");
+                }
+              } else {
+                setCep("Endereço não encontrado");
+              }
+            })
+            .catch((error) => {
+              console.error("Erro ao buscar CEP:", error);
+            });
         } else {
           console.error("Erro ao geocodificar endereço:", status);
         }
       });
     }
   }, [isLoaded, data, googleMapsLoaded]);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const feat = data && data.features;
   const feature = feat ? feat.split(",").map((item) => item.trim()) : [];
@@ -125,6 +153,7 @@ export const PostPage = () => {
                 <p>
                   <IoMdPin />
                   {data.localidade}
+                  {cep && `, CEP: ${cep}`}
                 </p>
                 <h1 id="title">{data.title}</h1>
                 {data.breve_descricao && (
@@ -204,19 +233,28 @@ export const PostPage = () => {
                 </div>
 
                 <hr></hr>
-                {console.log(data)}
 
                 <div className="right-side__map">
                   <h1 id="map-endereco">Endereço</h1>
-                  <p id="map-desc">{data.localidade}</p>
+                  <p id="map-desc">{data.localidade} - {cep && `CEP: ${cep}`}</p>
                   {isLoaded ? (
                     <GoogleMap
-                      mapContainerStyle={{ width: "100%", height: "100%" }}
-                      center={location}
-                      zoom={15}
-                    >
-                      <Marker position={location} />
-                    </GoogleMap>
+                    mapContainerStyle={{ width: "100%", height: "300px" }}
+                    center={{
+                      lat: location.lat,
+                      lng: location.lng
+                    }}
+                    zoom={15}
+                  >
+                    {location.lat !== 0 && location.lng !== 0 && (
+                      <Marker
+                        position={{
+                          lat: location.lat,
+                          lng: location.lng
+                        }}
+                      />
+                    )}
+                  </GoogleMap>
                   ) : (
                     <></>
                   )}

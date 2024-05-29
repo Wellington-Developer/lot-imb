@@ -16,7 +16,7 @@ export const FilterPage = () => {
   const [tipoNegocio, setTipoNegocio] = useState("");
   const [apenasComercio, setApenasComercio] = useState(false);
   const [precoMin, setPrecoMin] = useState(0);
-  const [precoMax, setPrecoMax] = useState(500000);
+  const [precoMax, setPrecoMax] = useState(10000000);
   const [banheirosMin, setBanheirosMin] = useState(0);
   const [banheirosMax, setBanheirosMax] = useState(10);
   const [quartosMin, setQuartosMin] = useState(0);
@@ -141,7 +141,7 @@ export const FilterPage = () => {
               step={`${id == "locacao" ? 200 : 5000}`}
               marks
               min={0}
-              max={`${id == "locacao" ? 10000 : 500000}`}
+              max={`${id == "locacao" ? 10000 : 10000000}`}
             />
             <div className="price-controller">
               <p>
